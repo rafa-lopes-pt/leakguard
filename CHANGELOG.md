@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `leakguard ignore <file|dir>` -- exempt paths from scans without hand-editing config. A file is added to both `.security-filetypes` `[allowed-files]` (allows a blocked filetype, e.g. an auto-generated SVG) and `.gitleaks.toml` `[allowlist].paths` (skips the secret scan); a directory is added to gitleaks only. Supports `-l`/`--list` and `-r`/`--remove`. Regex metacharacters in paths are auto-escaped.
+
 ## [1.2.0] - 2026-04-30
 
 ### Added

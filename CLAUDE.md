@@ -9,6 +9,7 @@ bin/leakguard.js                # CLI entry point (subcommand dispatch)
 scripts/
   setup.js                      # Interactive TUI setup (Node.js, ESM)
   encrypt-keywords.js           # Keyword management (encrypt/decrypt/merge/remove)
+  ignore.js                     # Manage scan exemptions (gitleaks paths + filetype allowed-files)
   scan-history.js               # One-time full-history audit
   deploy.js                     # Scan, archive, push to -dist repo
   setup-dist.js                 # Create and bootstrap the -dist repo
@@ -35,6 +36,11 @@ eslint.config.js                # ESLint flat config
 - `leakguard blacklist --override <keywords>` -- Replace entire keyword list
 - `leakguard blacklist -l` / `--list` -- Show current keywords
 - `leakguard blacklist -r` / `--remove <keywords>` -- Remove specific keywords
+- `leakguard ignore <file>` -- Exempt a file from scans (filetype allowlist + gitleaks)
+- `leakguard ignore <dir>` -- Exempt a directory from the gitleaks secret scan
+- `leakguard ignore -l` / `--list` -- Show current ignore entries
+- `leakguard ignore -r` / `--remove <paths>` -- Remove specific ignore entries
+  - Exact match only: ignoring a file allows ONLY that file, not all files of its type. `[allowed-files]` is exact per-file path (`==`); a directory cannot bulk-allow a filetype. Gitleaks file entries are end-anchored (`path$`).
 - `leakguard lint` -- Run all security scans on tracked files
 - `leakguard lint <paths...>` -- Scan specific files or directories
 - `leakguard lint --staged` -- Scan staged changes only (mirrors pre-commit hook)

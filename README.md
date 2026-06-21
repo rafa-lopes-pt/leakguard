@@ -291,6 +291,10 @@ If installed globally, replace `npx leakguard` with just `leakguard` in all exam
 | `leakguard blacklist kw1 --override` | Replace entire keyword list |
 | `leakguard blacklist -l` / `--list` | Show current keywords |
 | `leakguard blacklist -r kw1 kw2` | Remove specific keywords |
+| `leakguard ignore <file>` | Exempt a **file** from scans: allows its blocked filetype **and** skips the secret scan |
+| `leakguard ignore <dir>` | Exempt a **directory** from the secret scan |
+| `leakguard ignore -l` / `--list` | Show current ignore entries |
+| `leakguard ignore -r <path...>` | Remove specific ignore entries |
 | `leakguard scan-history [dir...]` | One-time full-history audit |
 | `leakguard zip <files...>` | Create encrypted .7z archive |
 | `leakguard deploy [path]` | Layer 3: scan, encrypt, and push to the public `-dist` repo |
@@ -343,6 +347,16 @@ npx leakguard blacklist --remove "client name"
 # Replace entire keyword list
 npx leakguard blacklist kw1 kw2 --override
 
+# Exempt a file from scans (e.g. an auto-generated SVG blocked by the filetype check)
+npx leakguard ignore docs/dependency-graph.svg
+
+# Exempt directories from the secret scan
+npx leakguard ignore generated/ vendor/
+
+# List / remove ignore entries
+npx leakguard ignore --list
+npx leakguard ignore --remove docs/dependency-graph.svg
+
 # Full-history audit on specific repos
 npx leakguard scan-history /path/to/repo1 /path/to/repo2
 
@@ -361,6 +375,30 @@ npx leakguard deploy --dry-run
 # Set up the -dist repo independently
 npx leakguard setup-dist
 ```
+
+### Ignoring Files and Directories
+
+`leakguard ignore` exempts a path from scanning without hand-editing config files. It works on **either a file or a directory**, and the effect differs because two scans use separate config:
+
+- **A file** (e.g. `docs/deps.svg`) is added to **both** `.security-filetypes` `[allowed-files]` (so a blocked filetype such as an auto-generated SVG is permitted) **and** `.gitleaks.toml` `[allowlist].paths` (so the secret scanner skips it).
+- **A directory** is added to `.gitleaks.toml` only. The filetype allowlist matches exact per-file paths, so it cannot exempt a whole directory.
+
+```bash
+# A generated SVG is blocked by the filetype check -- allow that specific file
+leakguard ignore docs/dependency-graph.svg
+
+# Skip noisy directories in the secret scan
+leakguard ignore generated/ build/
+
+leakguard ignore --list            # show current entries
+leakguard ignore -r generated/     # remove an entry
+```
+
+**Exact match only.** Ignoring a file allows *only that file*, never all files of its type -- `leakguard ignore docs/deps.svg` does **not** allow every `.svg` in the project. List each file you want to allow explicitly. Ignoring a **directory** affects the secret scan only: blocked filetypes inside it (e.g. `.svg`) stay blocked, because `[allowed-files]` matches exact per-file paths and cannot exempt a whole directory.
+
+> Secret-scan note: a file's gitleaks path entry is end-anchored (`docs/deps\.svg$`), so the secret scanner also skips any path ending in `docs/deps.svg`. This is harmless (it never relaxes the filetype check, which stays strict exact-match).
+
+Both config files are committed, so exemptions are shared with your team. Keyword-scan exemptions are not path-based; manage those with `leakguard blacklist -r`.
 
 ### Shell Completion
 

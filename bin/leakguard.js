@@ -26,7 +26,7 @@ _leakguard_completions() {
   local cur prev commands global_flags
   cur="\${COMP_WORDS[COMP_CWORD]}"
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
-  commands="init lint blacklist scan-history zip deploy setup-dist reassemble uninstall completion"
+  commands="init lint blacklist ignore scan-history zip deploy setup-dist reassemble uninstall completion"
   global_flags="--help -h --version -v"
 
   if [ "$COMP_CWORD" -eq 1 ]; then
@@ -40,6 +40,14 @@ _leakguard_completions() {
         COMPREPLY=( $(compgen -W "--override -l --list -r --remove" -- "$cur") )
         return
       fi
+      ;;
+    ignore)
+      if [[ "$cur" == -* ]]; then
+        COMPREPLY=( $(compgen -W "-l --list -r --remove --help -h" -- "$cur") )
+        return
+      fi
+      COMPREPLY=( $(compgen -f -- "$cur") )
+      return
       ;;
     deploy)
       if [[ "$cur" == -* ]]; then
@@ -95,6 +103,7 @@ ${h("Commands:")}
   ${cmd("lint <paths...>")}         ${dim("Scan specific files or directories")}
   ${cmd("lint --staged")}           ${dim("Scan staged changes only (mirrors pre-commit hook)")}
   ${cmd("blacklist <keywords>")}    ${dim("Add keywords to the encrypted blocklist")}
+  ${cmd("ignore <files|dirs>")}     ${dim("Exempt files or directories from scans (filetype + secret)")}
   ${cmd("scan-history [dir]")}      ${dim("One-time full-history audit")}
   ${cmd("zip <files...>")}          ${dim("Create encrypted .7z archive")}
   ${cmd("deploy [path]")}           ${dim("Scan, encrypt, push to public -dist repo (layer 3)")}
@@ -119,6 +128,12 @@ ${h("Blacklist options:")}
   ${cmd("blacklist kw1 --override")}  ${dim("Replace entire list with given keywords")}
   ${cmd("blacklist -l, --list")}    ${dim("Show current keywords")}
   ${cmd("blacklist -r, --remove kw1 kw2")}  ${dim("Remove specific keywords")}
+
+${h("Ignore options:")}
+  ${cmd("ignore path/to/file.svg")}  ${dim("Exempt a file: allows its filetype AND skips secret scan")}
+  ${cmd("ignore generated/ dist/")}  ${dim("Exempt directories from the secret scan")}
+  ${cmd("ignore -l, --list")}        ${dim("Show current ignore entries")}
+  ${cmd("ignore -r, --remove <p>")}  ${dim("Remove specific ignore entries")}
 
 ${h("Deploy config keys:")}
   ${dim("defaultMode=chunked|7z    Default deploy mode")}
@@ -159,6 +174,38 @@ ${h("Examples:")}
   ${cmd("leakguard blacklist --list")}                     ${dim("List current keywords")}
   ${cmd("leakguard blacklist -r foo bar")}                 ${dim("Remove specific keywords")}
   ${cmd("leakguard blacklist --remove foo bar")}           ${dim("Remove specific keywords")}
+`);
+}
+
+function printIgnoreHelp() {
+  const h = (s) => c.bold(c.cyan(s));
+  const cmd = (s) => c.bold(c.white(s));
+  const dim = (s) => c.dim(s);
+
+  console.log(`
+${h("Usage:")} ${cmd("leakguard ignore")} ${dim("[options] [files|directories...]")}
+
+${dim("Exempt files or directories from leakguard scans -- no hand-editing of config.")}
+
+${dim("A FILE is added to two places: .security-filetypes [allowed-files] (so a blocked")}
+${dim("filetype such as an auto-generated .svg is permitted) and .gitleaks.toml (so the")}
+${dim("secret scanner skips it). A DIRECTORY is added to .gitleaks.toml only -- the")}
+${dim("filetype allowlist is exact-path per-file and cannot match a directory.")}
+
+${dim("Exact match only -- ignoring a file allows ONLY that file, never all files of")}
+${dim("its type. `ignore docs/deps.svg` does not allow other .svg files; each must be")}
+${dim("listed explicitly. Ignoring a DIRECTORY affects the secret scan only: blocked")}
+${dim("filetypes inside it (e.g. .svg) stay blocked, since [allowed-files] is per-file.")}
+
+${h("Examples:")}
+  ${cmd("leakguard ignore docs/deps.svg")}        ${dim("Allow a blocked-filetype file + skip secret scan")}
+  ${cmd("leakguard ignore generated/ vendor/")}   ${dim("Skip directories in the secret scan")}
+  ${cmd("leakguard ignore -l")}                    ${dim("List current ignore entries")}
+  ${cmd("leakguard ignore --list")}                ${dim("List current ignore entries")}
+  ${cmd("leakguard ignore -r docs/deps.svg")}      ${dim("Remove an ignore entry")}
+  ${cmd("leakguard ignore --remove generated/")}   ${dim("Remove an ignore entry")}
+
+${dim("Note: keyword-scan exemption is not path-based -- manage it with `leakguard blacklist -r`.")}
 `);
 }
 
@@ -243,6 +290,35 @@ switch (command) {
         break;
       }
       encryptKeywords({ keywords, override });
+    }
+    break;
+  }
+
+  case "ignore": {
+    const subArgs = args.slice(1);
+    if (subArgs.includes("--help") || subArgs.includes("-h")) {
+      printIgnoreHelp();
+      break;
+    }
+    const { addIgnore, removeIgnore, listIgnore } = await import("../scripts/ignore.js");
+
+    if (subArgs.includes("-l") || subArgs.includes("--list")) {
+      listIgnore();
+    } else if (subArgs.includes("-r") || subArgs.includes("--remove")) {
+      const paths = subArgs.filter((a) => a !== "-r" && a !== "--remove");
+      if (paths.length === 0) {
+        console.error(`  ${c.red("ERROR")} Specify paths to remove.`);
+        printIgnoreHelp();
+        process.exit(1);
+      }
+      removeIgnore(paths);
+    } else {
+      const paths = subArgs.filter((a) => !a.startsWith("-"));
+      if (paths.length === 0) {
+        printIgnoreHelp();
+        break;
+      }
+      addIgnore(paths);
     }
     break;
   }
