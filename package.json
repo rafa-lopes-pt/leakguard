@@ -28,7 +28,7 @@
     "setup": "node scripts/setup.js",
     "encrypt-keywords": "node scripts/encrypt-keywords.js",
     "scan-history": "node scripts/scan-history.js",
-    "test": "node --test 'tests/**/*.test.js'",
+    "test": "node --test tests/*.test.js",
     "lint": "eslint ."
   },
   "keywords": [
