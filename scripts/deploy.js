@@ -87,11 +87,15 @@ function writeChecksumFile(buffer, chunkNames, outputDir) {
   let content = "# Checksums\n\n";
 
   if (chunkNames && chunkNames.length > 0) {
-    content += "Only the first checksum is the real SHA-256 of the original archive.\n";
-    content += "The remaining hashes are random decoys.\n\n";
-    content += `${chunkNames[0]}:\n\`\`\`\n${hash}\n\`\`\`\n`;
-    for (let i = 1; i < chunkNames.length; i++) {
-      content += `${chunkNames[i]}: \`${randomBytes(32).toString("hex")}\`\n`;
+    // List one SHA-256 per chunk in a uniform format. Exactly one is the real
+    // hash of the original archive; the rest are random decoys. Which one is
+    // real is intentionally NOT revealed here (no label, identical formatting,
+    // random position) -- that would defeat the decoys. The recipient verifies
+    // against a hash shared out-of-band (`leakguard reassemble --checksum`).
+    const hashes = chunkNames.map(() => randomBytes(32).toString("hex"));
+    hashes[randomBytes(1)[0] % chunkNames.length] = hash;
+    for (let i = 0; i < chunkNames.length; i++) {
+      content += `${chunkNames[i]}:\n\`\`\`\n${hashes[i]}\n\`\`\`\n\n`;
     }
   } else {
     content += `SHA-256:\n\`\`\`\n${hash}\n\`\`\`\n`;

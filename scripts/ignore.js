@@ -205,6 +205,12 @@ function removeAllowedFiles(paths) {
 // ---------------------------------------------------------------------------
 
 export function addIgnore(inputs) {
+  for (const p of inputs) {
+    if (!existsSync(join(REPO_ROOT, cleanPath(p)))) {
+      warn(`Path not found in repo: ${p}  (added anyway -- check for typos)`);
+    }
+  }
+
   const files = [];
   const dirs = [];
   for (const p of inputs) {

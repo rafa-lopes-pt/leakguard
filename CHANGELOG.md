@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-21
+
 ### Added
 
-- `leakguard ignore <file|dir>` -- exempt paths from scans without hand-editing config. A file is added to both `.security-filetypes` `[allowed-files]` (allows a blocked filetype, e.g. an auto-generated SVG) and `.gitleaks.toml` `[allowlist].paths` (skips the secret scan); a directory is added to gitleaks only. Supports `-l`/`--list` and `-r`/`--remove`. Regex metacharacters in paths are auto-escaped.
+- `leakguard ignore <file|dir>` -- exempt paths from scans without hand-editing config. A file is added to both `.security-filetypes` `[allowed-files]` (allows a blocked filetype, e.g. an auto-generated SVG) and `.gitleaks.toml` `[allowlist].paths` (skips the secret scan); a directory is added to gitleaks only. Supports `-l`/`--list` and `-r`/`--remove`. Regex metacharacters in paths are auto-escaped. Exact-match only: ignoring a file allows only that file, never all files of its type.
+- `leakguard ignore` warns when a given path does not exist in the repo (typo protection) but still records it, so exemptions for not-yet-generated files keep working.
+
+### Security
+
+- Chunked-deploy checksum file no longer reveals which hash is real. Previously the dist `README.md` stated "only the first checksum is the real SHA-256" and formatted the real hash differently from the decoys -- defeating the decoy scheme. All hashes are now listed in an identical format with the real one at a random position and no label; recipients verify against a hash shared out-of-band (`leakguard reassemble --checksum`).
 
 ## [1.2.0] - 2026-04-30
 
